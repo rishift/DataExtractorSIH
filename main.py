@@ -16,7 +16,7 @@ if 'data' not in os.listdir('.'):
 os.chdir('./data')
 
 
-STATE_NO = 36
+STATE_NO = 32
 YEAR_DIFF = 10
 
 def ue(s):
@@ -92,7 +92,7 @@ states.select_by_index(STATE_NO)
 sleep(1)
 
 districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
-for i in range(14, len(districts.options)):
+for i in range(1, len(districts.options)):
     distname = districts.options[i].text
     distcode = districts.options[i].get_attribute('value')
     districts.select_by_index(i)
