@@ -1,3 +1,5 @@
+# Price Data Extraction Script for SIH
+
 ### step 1:
 clone this repository
 
