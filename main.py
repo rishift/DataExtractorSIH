@@ -16,7 +16,7 @@ if 'data' not in os.listdir('.'):
 os.chdir('./data')
 
 
-STATE_NO = 2
+STATE_NO = 4
 YEAR_DIFF = 10
 
 def ue(s):
