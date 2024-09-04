@@ -3,6 +3,7 @@ from time import sleep
 from dateutil.relativedelta import relativedelta
 import requests
 
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver import Edge
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import Select
@@ -16,7 +17,7 @@ if 'data' not in os.listdir('.'):
 os.chdir('./data')
 
 
-STATE_NO = 32
+STATE_NO = 34
 YEAR_DIFF = 10
 
 def ue(s):
@@ -95,8 +96,16 @@ districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
 for i in range(1, len(districts.options)):
     distname = districts.options[i].text
     distcode = districts.options[i].get_attribute('value')
-    districts.select_by_index(i)
-    sleep(0.6)
+    try:
+        districts.select_by_index(i)
+    except StaleElementReferenceException:
+        print("\n\n\tstale element reference\n\n")
+        districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
+        markets = browser.find_element(by=By.ID, value='ddlMarket')
+        i -= 1
+        continue
+
+    # sleep()
     
     districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
     markets = browser.find_element(by=By.ID, value='ddlMarket')
@@ -127,22 +136,16 @@ for i in range(1, len(districts.options)):
                     stname = fnc(stname)
                     distname = fnc(distname)
                     mrname = fnc(mrname)
-                    if stname not in os.listdir('.'):
-                        os.mkdir(stname)
+
+                    if stname not in os.listdir('.'): os.mkdir(stname)
                     os.chdir(stname)
-                    if distname not in os.listdir('.'):
-                        os.mkdir(distname)
+                    if distname not in os.listdir('.'):  os.mkdir(distname)
                     os.chdir(distname)
-                    mrname = fnc(mrname)
-                    if mrname not in os.listdir('.'):
-                        print(os.listdir())
-                        os.mkdir(mrname)
+                    if mrname not in os.listdir('.'): os.mkdir(mrname)
                     os.chdir(mrname)
-                    if category not in os.listdir('.'):
-                        os.mkdir(category)
+                    if category not in os.listdir('.'):  os.mkdir(category)
                     os.chdir(category)
-                    if commodity not in os.listdir('.'):
-                        os.mkdir(commodity)
+                    if commodity not in os.listdir('.'):  os.mkdir(commodity)
                     os.chdir(commodity)
 
                     with open('data.csv', 'w') as f:
