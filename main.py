@@ -16,7 +16,7 @@ if 'data' not in os.listdir('.'):
 os.chdir('./data')
 
 
-STATE_NO = 4
+STATE_NO = 36
 YEAR_DIFF = 10
 
 def ue(s):
@@ -75,6 +75,9 @@ comms = {
     }
 }
 
+def fnc(s):
+    return s.strip().replace('/','--')
+
 
 opts = Options()
 browser = Edge(options=opts)
@@ -89,7 +92,7 @@ states.select_by_index(STATE_NO)
 sleep(1)
 
 districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
-for i in range(1, len(districts.options)):
+for i in range(14, len(districts.options)):
     distname = districts.options[i].text
     distcode = districts.options[i].get_attribute('value')
     districts.select_by_index(i)
@@ -121,13 +124,18 @@ for i in range(1, len(districts.options)):
                         except ValueError:
                             continue
 
+                    stname = fnc(stname)
+                    distname = fnc(distname)
+                    mrname = fnc(mrname)
                     if stname not in os.listdir('.'):
                         os.mkdir(stname)
                     os.chdir(stname)
                     if distname not in os.listdir('.'):
                         os.mkdir(distname)
                     os.chdir(distname)
+                    mrname = fnc(mrname)
                     if mrname not in os.listdir('.'):
+                        print(os.listdir())
                         os.mkdir(mrname)
                     os.chdir(mrname)
                     if category not in os.listdir('.'):
