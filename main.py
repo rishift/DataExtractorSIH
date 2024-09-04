@@ -93,7 +93,7 @@ for i in range(1, len(districts.options)):
     distname = districts.options[i].text
     distcode = districts.options[i].get_attribute('value')
     districts.select_by_index(i)
-    sleep(0.1)
+    sleep(0.6)
     
     districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
     markets = browser.find_element(by=By.ID, value='ddlMarket')
