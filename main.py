@@ -1,4 +1,5 @@
 from datetime import datetime
+import sys
 from time import sleep
 from dateutil.relativedelta import relativedelta
 import requests
@@ -17,7 +18,8 @@ if 'data' not in os.listdir('.'):
 os.chdir('./data')
 
 
-STATE_NO = 34
+STATE_NO = int(sys.argv[1])
+DIST_NO = int(sys.argv[2])
 YEAR_DIFF = 10
 
 def ue(s):
@@ -77,80 +79,84 @@ comms = {
 }
 
 def fnc(s):
-    return s.strip().replace('/','--')
+    a = s.strip().replace('/','--')
+    return a[:-1] if (a.endswith('.')) else a
 
 
-opts = Options()
-browser = Edge(options=opts)
-browser.get('https://agmarknet.gov.in/')
-sleep(2)
+if __name__ == '__main__':
 
-states = Select(browser.find_element(by=By.ID, value='ddlState'))
-stname = states.options[STATE_NO].text
-stcode = states.options[STATE_NO].get_attribute('value')
-states.select_by_index(STATE_NO)
+    opts = Options()
+    browser = Edge(options=opts)
+    browser.get('https://agmarknet.gov.in/')
+    sleep(2)
 
-sleep(1)
+    states = Select(browser.find_element(by=By.ID, value='ddlState'))
+    stname = states.options[STATE_NO].text
+    stcode = states.options[STATE_NO].get_attribute('value')
+    states.select_by_index(STATE_NO)
 
-districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
-for i in range(1, len(districts.options)):
-    distname = districts.options[i].text
-    distcode = districts.options[i].get_attribute('value')
-    try:
-        districts.select_by_index(i)
-    except StaleElementReferenceException:
-        print("\n\n\tstale element reference\n\n")
+    sleep(1)
+
+    districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
+    for i in range(DIST_NO, len(districts.options)):
+        try:
+            distname = districts.options[i].text
+            distcode = districts.options[i].get_attribute('value')
+        
+            districts.select_by_index(i)
+        except StaleElementReferenceException:
+            print("\n\n\tstale element reference\n\n")
+            districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
+            markets = browser.find_element(by=By.ID, value='ddlMarket')
+            i -= 1
+            continue
+
+        sleep(0.5)
+        
         districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
         markets = browser.find_element(by=By.ID, value='ddlMarket')
-        i -= 1
-        continue
 
-    # sleep()
-    
-    districts = Select(browser.find_element(by=By.ID, value='ddlDistrict'))
-    markets = browser.find_element(by=By.ID, value='ddlMarket')
+        for k,v in marketgetter(markets).items():
+            mrname = k
+            mrcode = v
+            for category in comms.keys():
+                for commodity in comms[category].keys():
+                    url = rf'https://agmarknet.gov.in/SearchCmmMkt.aspx?Tx_Commodity={ue(comms[category][commodity])}&Tx_State={ue(stcode)}&Tx_District={ue(distcode)}&Tx_Market={ue(mrcode)}&DateFrom={then}&DateTo={now}&Fr_Date={then}&To_Date={now}&Tx_Trend=2&Tx_CommodityHead={ue(commodity)}&Tx_StateHead={ue(stname)}&Tx_DistrictHead={ue(distname)}&Tx_MarketHead={ue(mrname)}'
+                    req = requests.get(url)
+                    reqdata = BeautifulSoup(req.text, 'html.parser')
+                    reslabel = reqdata.find(id="cphBody_Label_Result")
+                    if " Not Available" in reslabel.text:
+                        print(f'NOT FOUND {stname} {STATE_NO} > {distname} {i} > {mrname} > {commodity}')
+                        continue
+                    elif not reslabel.text:
+                        table = reqdata.find(id="cphBody_GridViewBoth")
+                        filedata = 'year,month,date,arrival,min,max,modal\n'
+                        for row in tuple(table.children)[2:-3]:
+                            cols = tuple(row.children)
+                            try:
+                                ymd = dc(cols[10].text)
+                                filedata += f'{ymd},{cols[6].text},{cols[7].text},{cols[8].text},{cols[9].text}\n'
+                            except ValueError:
+                                continue
 
-    for k,v in marketgetter(markets).items():
-        mrname = k
-        mrcode = v
-        for category in comms.keys():
-            for commodity in comms[category].keys():
-                url = rf'https://agmarknet.gov.in/SearchCmmMkt.aspx?Tx_Commodity={ue(comms[category][commodity])}&Tx_State={ue(stcode)}&Tx_District={ue(distcode)}&Tx_Market={ue(mrcode)}&DateFrom={then}&DateTo={now}&Fr_Date={then}&To_Date={now}&Tx_Trend=2&Tx_CommodityHead={ue(commodity)}&Tx_StateHead={ue(stname)}&Tx_DistrictHead={ue(distname)}&Tx_MarketHead={ue(mrname)}'
-                req = requests.get(url)
-                reqdata = BeautifulSoup(req.text, 'html.parser')
-                reslabel = reqdata.find(id="cphBody_Label_Result")
-                if " Not Available" in reslabel.text:
-                    print(f'NOT FOUND {stname} > {distname} > {mrname} > {commodity}')
-                    continue
-                elif not reslabel.text:
-                    table = reqdata.find(id="cphBody_GridViewBoth")
-                    filedata = 'year,month,date,arrival,min,max,modal\n'
-                    for row in tuple(table.children)[2:-3]:
-                        cols = tuple(row.children)
-                        try:
-                            ymd = dc(cols[10].text)
-                            filedata += f'{ymd},{cols[6].text},{cols[7].text},{cols[8].text},{cols[9].text}\n'
-                        except ValueError:
-                            continue
+                        stname = fnc(stname)
+                        distname = fnc(distname)
+                        mrname = fnc(mrname)
 
-                    stname = fnc(stname)
-                    distname = fnc(distname)
-                    mrname = fnc(mrname)
+                        if stname not in os.listdir(): os.mkdir(stname)
+                        os.chdir(stname)
+                        if distname not in os.listdir():  os.mkdir(distname)
+                        os.chdir(distname)
+                        if mrname not in os.listdir(): os.mkdir(mrname)
+                        os.chdir(mrname)
+                        if category not in os.listdir():  os.mkdir(category)
+                        os.chdir(category)
+                        if commodity not in os.listdir():  os.mkdir(commodity)
+                        os.chdir(commodity)
 
-                    if stname not in os.listdir('.'): os.mkdir(stname)
-                    os.chdir(stname)
-                    if distname not in os.listdir('.'):  os.mkdir(distname)
-                    os.chdir(distname)
-                    if mrname not in os.listdir('.'): os.mkdir(mrname)
-                    os.chdir(mrname)
-                    if category not in os.listdir('.'):  os.mkdir(category)
-                    os.chdir(category)
-                    if commodity not in os.listdir('.'):  os.mkdir(commodity)
-                    os.chdir(commodity)
-
-                    with open('data.csv', 'w') as f:
-                        f.write(filedata)
-                        print(f'DATA WRITTEN {stname} > {distname} > {mrname} > {commodity}')
-                    os.chdir('../../../../..')
-                        
-sleep(2)
+                        with open('data.csv', 'w') as f:
+                            f.write(filedata)
+                            print(f'DATA WRITTEN {stname} > {distname} > {mrname} > {commodity}')
+                        os.chdir('../../../../..')
+                            
+    sleep(2)
